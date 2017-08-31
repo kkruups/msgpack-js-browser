@@ -9,6 +9,13 @@
 
 var exports = {};
 
+  /*
+    types: ArrayBuffer, DataView, JSON String
+    returns String:  Buffer Content as JSON String   
+                         OR 
+                     Buffer Content as <type and  Hex Code> for only first 20 bytes of Buffer (with Big Endian Alignment)
+  */  
+  
 exports.inspect = inspect;
 function inspect(buffer) {
   if (buffer === undefined) return "undefined";
@@ -26,13 +33,14 @@ function inspect(buffer) {
   var bytes = [];
   for (var i = 0; i < buffer.byteLength; i++) {
     if (i > 20) {
+      //for buffer larger than 20 bytes ellipse remaining bytes
       bytes.push("...");
       break;
     }
     var byte = view.getUint8(i).toString(16);
     if (byte.length === 1) byte = "0" + byte;
     bytes.push(byte);
-  }
+  }        
   return "<" + type + " " + bytes.join(" ") + ">";
 }
 
@@ -41,18 +49,47 @@ exports.utf8Write = utf8Write;
 function utf8Write(view, offset, string) {
   var byteLength = view.byteLength;
   for(var i = 0, l = string.length; i < l; i++) {
+    
     var codePoint = string.charCodeAt(i);
 
-    // One byte of UTF-8
+    // One byte of UTF-8  byte < 128 == ASCII Char
     if (codePoint < 0x80) {
       view.setUint8(offset++, codePoint >>> 0 & 0x7f | 0x00);
       continue;
     }
+    
+    /*
+    CharCode to Utf8 Conversion - Double Byte Algorithm 
 
-    // Two bytes of UTF-8
-    if (codePoint < 0x800) {
-      view.setUint8(offset++, codePoint >>> 6 & 0x1f | 0xc0);
-      view.setUint8(offset++, codePoint >>> 0 & 0x3f | 0x80);
+Convert charCode: 1500  -->  ל  
+             10111 011100
+             xxxxx  xxxxxx 
+
+Extract  5 bits from left --> 11 bit charcode
+      codePt >>> 6     &   0x7f       | 0xC0
+step1.          10111 011100 & 11111  | 11000000
+step2.          10111 xxxxxx & 11111  | 11000000
+step3.          10111              & 11111  | 11000000    
+result:                                           11010111     // build 1st utf8 byte of Double Byte
+
+       codePt >>> 0     &   0x3f       | 0x80
+
+step1.   10111 011100    & 111111 |  10000000   // build 2nd utf8 bye of Double Byte
+step2.   xxxxx  011100    & 111111 |  10000000
+step3.               011100    & 111111 |  10000000
+result:                                                  10011100  // build 2nd utf8 bye of Double Byte
+
+
+utf8_byte[0] =  11010111 
+utf8_byte[1] =   10011100
+    
+    */
+    
+    
+    // Two bytes of UTF-8  Double Bytes are lower than 0x800
+    if (codePoint < 0x800) {                                   //charCode range [128, 2048)     
+      view.setUint8(offset++, codePoint >>> 6 & 0x1f | 0xc0);  //extract first 5 bits from left, then Or to build 1st Utf8 byte 110xxxxx
+      view.setUint8(offset++, codePoint >>> 0 & 0x3f | 0x80);  //extract first 6 bits from right then Or to build 2nd Utf8 byte 10xxxxxx
       continue;
     }
 
@@ -74,7 +111,7 @@ function utf8Write(view, offset, string) {
     }
     throw new Error("bad codepoint " + codePoint);
   }
-}
+} 
 
 exports.utf8Read = utf8Read;
 function utf8Read(view, offset, length) {
