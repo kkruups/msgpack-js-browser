@@ -66,18 +66,18 @@ CharCode to Utf8 Conversion - Double Byte Algorithm
 ---------------------------------------------------
 
 utf8 Unicode Byte Encoding Reference
-==========================================================================  
-Number   Bits for     First         Last
-of bytes   code pt    code pt     code pt        Byte 1	Byte 2	Byte 3	Byte 4
-1	7	U+0000	U+007F	0xxxxxxx			
-2	11	U+0080	U+07FF	110xxxxx	10xxxxxx		
-3	16	U+0800	U+FFFF	1110xxxx	10xxxxxx	10xxxxxx	
-4	21	U+10000	U+10FFFF	11110xxx	10xxxxxx	10xxxxxx	10xxxxxx
-==========================================================================
+=================================================================================  
+Number   Bits for   First       Last
+of bytes code pt    code pt     code pt   Byte 1	   Byte     2	Byte 3	Byte 4
+1	       7	        U+0000	    U+007F	  0xxxxxxx			
+2	      11	        U+0080	    U+07FF	  110xxxxx	10xxxxxx		
+3	      16	        U+0800	    U+FFFF	  1110xxxx	10xxxxxx	10xxxxxx	
+4	      21	        U+10000	    U+10FFFF  11110xxx	10xxxxxx	10xxxxxx	10xxxxxx
+=================================================================================
 
 ====================================================
 CharCode to Utf8 Conversion - Double Byte Algorithm 
-===================================================
+====================================================
 Example: Convert charCode: 1500  -->  ל  
              10111 011100
              xxxxx  xxxxxx 
@@ -86,20 +86,21 @@ Example: Convert charCode: 1500  -->  ל
 // build 1st utf8 byte of Double Byte
 //Extract  5 bits from left --> 11 bit charcode
 
-            codePt >>> 6     &   0x7f    | 0xC0
-step1.          10111 011100 & 11111  | 11000000                    // Extract Step        
-step2.          10111 xxxxxx & 11111  | 11000000                    // And 5 bits from left, subresult: 10111
-step3.          10111              & 11111  | 11000000              
-step4.         	            10111 | 11000000                        // Or Step       
-result:                                          11010111           // 1st utf8 Byte
+         codePt >>> 6 & 0x7f   | 0xC0
+step1.   10111 011100 & 11111  | 11000000                   // Extract Step        
+step2.   10111 xxxxxx & 11111  | 11000000                   // And 5 bits from left, subresult: 10111
+step3.          10111 & 11111  | 11000000              
+step4.         	         10111 | 11000000                   // Or Step       
+result:                     11010111                        // 1st utf8 Byte of Double Byte Unicode
 
 // Build 2nd utf8 bye of Double Byte
-        codePt >>> 0     &   0x3f   | 0x80                         // Extract nothing
-step1.   10111 011100    & 111111 |  10000000                      // And complete charcode for 6 bits from right, subresult: 011100  
-step2.   xxxxx  011100    & 111111 |  10000000
-step3.               011100    & 111111 |  10000000                       
-step4.                                   011100 |  10000000        // Or Step
-result:                                            10011100        // 2nd utf8 byte
+         codePt >>> 0 &  0x3f | 0x80                       // Extract nothing
+step1.   10111 011100 & 111111 |  10000000                 // And complete charcode for 6 bits from right, subresult: 011100  
+step2.   xxxxx 011100 & 111111 |  10000000
+step3.         011100 & 111111 |  10000000                       
+step4.                  011100 |  10000000                 // Or Step
+result:                     10011100                       // 2nd utf8 byte Double Byte Unicode
+
 utf8_byte[0] =  11010111 
 utf8_byte[1] =   10011100
 utf8_bytes= [110100111, 10011100]
