@@ -115,10 +115,43 @@ utf8_bytes= [110100111, 10011100]
       continue;
     }
 
+/*
+=========================================
+Converting 3 Byte Unicode CharCode to UTF8
+-----------------------------------------
+
+*/    
+        
     // Three bytes of UTF-8.
     if (codePoint < 0x10000) {
+      
+/*  Byte 1 of 3-Byte Unicode CharCode
+
+    Extract 1st 4 bits from left of charcode, then bitwiseAnd with identity (1111 == 0x0F),  then BitwiseOr  with 1110xxxx 
+     to build: 
+       1st Byte of Utf8 from 3 Byte Unicode CharCode
+*/
       view.setUint8(offset++, codePoint >>> 12 & 0x0f | 0xe0);
+      
+/*  Byte 2  of 3-Byte Unicode CharCode
+
+    Extract 1st 10 bits from left of charcode, then bitwiseAnd with identity(111111 == 0x3F) 
+     to extract 6 bits from left (or middle 6 bits), then bitwiseOr with 10xxxxxx == 0x80
+     to build:
+          2nd Byte of Utf8 from 3 Byte Unicode CharCode
+*/
+      
       view.setUint8(offset++, codePoint >>> 6  & 0x3f | 0x80);
+
+      
+/*  Byte 3   of 3-Byte Unicode CharCode
+ 
+    Extract no bits from charcode (uses asis), then bitwiseAnd with identity(111111 = 0x3F) 
+     to extract 6 bits from left (leftmost 6 bits) entire charcode  , then bitwiseOr with 10xxxxxx 
+     to build:
+          3rd Byte of Utf8 from 3 Byte Unicode CharCode
+*/      
+      
       view.setUint8(offset++, codePoint >>> 0  & 0x3f | 0x80);
       continue;
     }
