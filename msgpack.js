@@ -179,29 +179,59 @@ function utf8Read(view, offset, length) {
       continue;
     }
     // Two byte character
+    /*
+     first confirm 1st byte's range is below 1st Bytes Double Byte Upper limit (11100000 == 0xe0)
+     bitwiseAnd of Double Byte Range will yield 0xc0
+     [0xc0, 0xdf]  == [11000000, 11011111]
+       1st ByteLwrLimit      0xe0
+       11000000            & 11100000  ==  11000000 == 0xc0
+       1st ByteUprLimit      0xe0  
+       11011111            & 11100000  ==  11000000 == 0xc0
+    */
+    11000000
+    11011111
     if ((byte & 0xe0) === 0xc0) {
+      /*
+        Extract right-most 5 bits from 1st Byte by bitwiseAnd with 0x1f (11111), 110nnnnn & 11111 == nnnnn, 
+        then left-shift by 6 to build an 11-bit binary number,  nnnnn000000
+        in order to bitwiseOR  with 2nd Byte's (next byte) in next step  
+      */
       string += String.fromCharCode(
-        ((byte & 0x0f) << 6) |
-        (view.getUint8(++i) & 0x3f)
-      );
+        ((byte & 0x0f) << 6) |   //note:  this is a bug here, should be 0x1f not 0x0f
+        (view.getUint8(++i) & 0x3f)      //Get 2nd Byte, then
+                                         //Extract right-most 6-bits from 2nd Byte, 10xxxxxx, and bitwiseAnd with 0x3f (111111),
+                                         //10xxxxxx & 111111 == xxxxxx then bitwiseOR   nnnnn000000 | xxxxxx == nnnnnxxxxxx to build charcode
+      ); 
       continue;
     }
     // Three byte character
+    /*
+      Confirm 1st byte is between valid range of Three Byte Character [11100000,11101111] == [0xe0, 0xef] below upper limit 11110000 == 0xf0
+      If 1st Byte valid a bitwiseAnd will result in 0xe0 == value 
+       lwrlimit       0xe0
+      11100000    & 11110000 ==  11100000
+      uprlimit        0xe0
+      11101111    & 11110000 ==  11100000
+    */
     if ((byte & 0xf0) === 0xe0) {
       string += String.fromCharCode(
-        ((byte & 0x0f) << 12) |
-        ((view.getUint8(++i) & 0x3f) << 6) |
-        ((view.getUint8(++i) & 0x3f) << 0)
-      );
+        ((byte & 0x0f) << 12) |    //extract right-most 4 digits from 1st byte, then 12-bit shift-left to build 16-bit Binary number 
+        ((view.getUint8(++i) & 0x3f) << 6) |   //extract right-most 6-bits from 2nd byte and build 12 bit number 
+        ((view.getUint8(++i) & 0x3f) << 0)     // extract right-most 6-bits from 3rd byte, then　bitwiseOR all 3 bytes, 16-bit, 12-bit, and 6-bit to build charcode
+      );                                       //  nnnn000000000000 | xxxxxx000000 | zzzzzz  == nnnnxxxxxxzzzzzz 
       continue;
     }
     // Four byte character
-    if ((byte & 0xf8) === 0xf0) {
+    /*    [11110000, 11110111] vaild range of 1st Byte, upper limit 11111000 == 0xf8 
+          check if 1st byte in valid range for 4 Byte Char
+    
+    */
+    if ((byte & 0xf8) === 0xf0) {  
       string += String.fromCharCode(
-        ((byte & 0x07) << 18) |
-        ((view.getUint8(++i) & 0x3f) << 12) |
-        ((view.getUint8(++i) & 0x3f) << 6) |
-        ((view.getUint8(++i) & 0x3f) << 0)
+        ((byte & 0x07) << 18) |    ( //Extract righ-most 3-bits from 1st byte, then left-shit by 18 bits to build 21 bit binary number
+        ((view.getUint8(++i) & 0x3f) << 12) |  //extract right-most 6-bits and left-shift by 12-bits to build 16 bit binary number  
+        ((view.getUint8(++i) & 0x3f) << 6) |   // extract right-most 6-bits and left-shift by 6 bits to build 12 bit binary number
+        ((view.getUint8(++i) & 0x3f) << 0)     // extract right-most 6-bits, then bitwiseOR all 4 bytes to build charcode
       );
       continue;
     }
